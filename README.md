@@ -1,12 +1,20 @@
-# T3Router - Node.js Client
+# T3Router - Node.js Client & OpenAI-Compatible Server
 
-A Node.js client library for interacting with the t3.chat API, supporting both text conversations and image generation.
+A comprehensive Node.js library for interacting with the t3.chat API, featuring both a native client and an OpenAI-compatible API server.
 
 ## Features
 
+### Client Library
 - 🤖 **Multi-model support**: Works with GPT, Gemini, and other models available on t3.chat
 - 💬 **Conversation management**: Handle multi-turn conversations with context
+- 🌊 **Streaming support**: Real-time streaming responses with `sendStream`
 - ⚙️ **Configurable**: Customize reasoning effort and search inclusion
+
+### OpenAI-Compatible Server
+- 🔌 **OpenAI API compatibility**: Drop-in replacement for OpenAI API
+- 🌊 **Streaming & non-streaming**: Both response modes supported
+- 🔄 **Model mapping**: Automatic mapping from OpenAI model names
+- 🚀 **Easy integration**: Works with existing OpenAI client libraries
 
 ## Installation
 
@@ -187,6 +195,157 @@ npm run example:multi
 
 # Streaming response example
 npm run example:streaming
+
+# Start OpenAI-compatible server
+npm run start:openai-server
+
+# Test OpenAI server functionality
+npm run test:openai-server
+```
+
+## OpenAI-Compatible Server
+
+The included OpenAI-compatible server provides a drop-in replacement for the OpenAI API, allowing you to use T3Router with any OpenAI-compatible client library.
+
+### Quick Start
+
+1. **Start the server:**
+```bash
+npm run start:openai-server
+```
+
+2. **Use with any OpenAI client:**
+```python
+import openai
+
+client = openai.OpenAI(
+    api_key="any-key",  # Can be any string if using env vars
+    base_url="http://localhost:3000/v1"
+)
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+### API Endpoints
+
+#### Chat Completions
+**POST** `/v1/chat/completions`
+
+OpenAI-compatible chat completions with streaming support:
+
+```json
+{
+  "model": "gpt-4",
+  "messages": [
+    {"role": "user", "content": "Hello, how are you?"}
+  ],
+  "stream": true,
+  "temperature": 0.7
+}
+```
+
+#### List Models
+**GET** `/v1/models`
+
+Returns available models in OpenAI format.
+
+#### Health Check
+**GET** `/health`
+
+Server health status.
+
+### Model Mapping
+
+Automatic mapping from OpenAI model names to T3Router models:
+
+| OpenAI Model | T3Router Model |
+|--------------|----------------|
+| gpt-3.5-turbo | gemini-2.5-flash-lite |
+| gpt-4 | gemini-2.5-flash |
+| gpt-4-turbo | gemini-2.5-flash |
+| gpt-4o | gemini-2.5-flash |
+| gpt-4o-mini | gemini-2.5-flash-lite |
+| claude-3-sonnet | claude-3.5-sonnet |
+
+### Authentication
+
+Two methods supported:
+
+1. **Environment Variables (Recommended):**
+   Set `COOKIES` and `CONVEX_SESSION_ID` in `.env`, use any API key
+
+2. **API Key Format:**
+   Use `cookies:convexSessionId` as the API key
+
+### Usage Examples
+
+#### Node.js with OpenAI Library
+```javascript
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: 'your-api-key',
+  baseURL: 'http://localhost:3000/v1',
+});
+
+const response = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'What is AI?' }],
+  stream: true
+});
+
+for await (const chunk of response) {
+  const content = chunk.choices[0]?.delta?.content;
+  if (content) process.stdout.write(content);
+}
+```
+
+#### Python with OpenAI Library
+```python
+import openai
+
+client = openai.OpenAI(
+    api_key="your-api-key",
+    base_url="http://localhost:3000/v1"
+)
+
+stream = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Tell me a story"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+#### cURL
+```bash
+curl -X POST http://localhost:3000/v1/chat/completions \
+  -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": false
+  }'
+```
+
+### Testing the Server
+
+```bash
+# Test all functionality
+npm run test:openai-server
+
+# Test streaming only
+npm run test:openai-streaming
+
+# Test non-streaming only
+npm run test:openai-non-streaming
 ```
 
 ## Error Handling
