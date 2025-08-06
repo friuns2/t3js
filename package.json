@@ -1,0 +1,32 @@
+{
+  "name": "t3js",
+  "version": "0.1.0",
+  "description": "A Node.js client library for t3.chat - access 50+ AI models from your terminal",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "example:basic": "node examples/basic_usage.js",
+    "example:multi": "node examples/multi_message.js",
+    "example:streaming": "node examples/streaming_example.js"
+  },
+  "keywords": [
+    "t3chat",
+    "ai",
+    "api",
+    "client",
+    "cli"
+  ],
+  "author": "Vibhek Soni",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
