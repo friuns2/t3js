@@ -11,7 +11,6 @@
     "test:openai-server": "node test_openai_server.js",
     "test:openai-streaming": "node test_openai_streaming.js",
     "test:openai-non-streaming": "node test_openai_non_streaming.js",
-    "test:system-message": "node test_system_message.js",
     "start:openai-server": "node src/openai-server.js"
   },
   "keywords": [
