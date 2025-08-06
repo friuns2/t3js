@@ -59,10 +59,21 @@ async function getOrCreateClient(apiKey = 'default') {
  * Convert OpenAI messages format to T3Router messages format
  */
 function convertOpenAIMessagesToT3(openaiMessages) {
-  return openaiMessages.map(msg => {
-    const role = msg.role === 'system' ? MessageType.USER : 
-                msg.role === 'user' ? MessageType.USER : 
-                MessageType.ASSISTANT;
+  const systemMessages = [];
+  const conversationMessages = [];
+  
+  // Separate system messages from conversation messages
+  openaiMessages.forEach(msg => {
+    if (msg.role === 'system') {
+      systemMessages.push(msg);
+    } else {
+      conversationMessages.push(msg);
+    }
+  });
+  
+  // Convert conversation messages to T3 format
+  const t3Messages = conversationMessages.map(msg => {
+    const role = msg.role === 'user' ? MessageType.USER : MessageType.ASSISTANT;
     
     let content = '';
     if (typeof msg.content === 'string') {
@@ -77,6 +88,29 @@ function convertOpenAIMessagesToT3(openaiMessages) {
     
     return Message.new(role, content);
   });
+  
+  // If there are system messages, prepend them to the first user message
+  if (systemMessages.length > 0 && t3Messages.length > 0) {
+    const systemContent = systemMessages
+      .map(msg => typeof msg.content === 'string' ? msg.content : 
+           Array.isArray(msg.content) ? msg.content
+             .filter(part => part.type === 'text')
+             .map(part => part.text)
+             .join('\n') : '')
+      .join('\n\n');
+    
+    // Find the first user message and prepend system content with clear formatting
+    const firstUserIndex = t3Messages.findIndex(msg => msg.type === MessageType.USER);
+    if (firstUserIndex !== -1) {
+      const originalContent = t3Messages[firstUserIndex].content;
+      t3Messages[firstUserIndex] = Message.new(
+        MessageType.USER, 
+        `SYSTEM INSTRUCTIONS: ${systemContent}\n\nUSER REQUEST: ${originalContent}\n\nPlease follow the system instructions above when responding to the user request.`
+      );
+    }
+  }
+  
+  return t3Messages;
 }
 
 /**
