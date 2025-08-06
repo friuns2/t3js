@@ -141,34 +141,80 @@ app.post('/v1/chat/completions', async (req, res) => {
     client.newConversation();
     t3Messages.forEach(msg => client.appendMessage(msg));
     
-    // Send the last message and get response
-    const response = await client.send(t3Model, null, config);
-    
     if (stream) {
-      // Streaming response (simplified - just send the complete response)
+      // Real-time streaming response using sendStream
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
       
-      const streamResponse = {
-        id: `chatcmpl-${Date.now()}`,
-        object: 'chat.completion.chunk',
-        created: Math.floor(Date.now() / 1000),
-        model: model,
-        choices: [{
-          index: 0,
-          delta: {
-            role: 'assistant',
-            content: response.contentType.getText() || response.content
-          },
-          finish_reason: 'stop'
-        }]
-      };
+      const chatId = `chatcmpl-${Date.now()}`;
+      const created = Math.floor(Date.now() / 1000);
       
-      res.write(`data: ${JSON.stringify(streamResponse)}\n\n`);
-      res.write('data: [DONE]\n\n');
-      res.end();
+      try {
+        // Send initial chunk with role
+        const initialChunk = {
+          id: chatId,
+          object: 'chat.completion.chunk',
+          created: created,
+          model: model,
+          choices: [{
+            index: 0,
+            delta: {
+              role: 'assistant'
+            },
+            finish_reason: null
+          }]
+        };
+        res.write(`data: ${JSON.stringify(initialChunk)}\n\n`);
+        
+        // Stream the response
+        for await (const chunk of client.sendStream(t3Model, null, config)) {
+          if (chunk.complete) {
+            // Send final chunk
+            const finalChunk = {
+              id: chatId,
+              object: 'chat.completion.chunk',
+              created: created,
+              model: model,
+              choices: [{
+                index: 0,
+                delta: {},
+                finish_reason: 'stop'
+              }]
+            };
+            res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
+            res.write('data: [DONE]\n\n');
+            res.end();
+            break;
+          } else if (chunk.chunk) {
+            // Send content chunk
+            const contentChunk = {
+              id: chatId,
+              object: 'chat.completion.chunk',
+              created: created,
+              model: model,
+              choices: [{
+                index: 0,
+                delta: {
+                  content: chunk.chunk
+                },
+                finish_reason: null
+              }]
+            };
+            res.write(`data: ${JSON.stringify(contentChunk)}\n\n`);
+          }
+        }
+      } catch (streamError) {
+        console.error('Streaming error:', streamError);
+        res.write(`data: {"error": "${streamError.message}"}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+      }
     } else {
+      // Send the last message and get response
+      const response = await client.send(t3Model, null, config);
       // Non-streaming response
       const openaiResponse = {
         id: `chatcmpl-${Date.now()}`,
